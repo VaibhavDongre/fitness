@@ -17,7 +17,10 @@ spring:
         spring.json.use.type.headers: false
         spring.json.value.default.type: com.fitness.aiservice.model.Activity
         spring.json.trusted:packages: "*" #koi bhi package se data accept kr sakta hai
-
+gemini:
+  api:
+    url: ${GEMINI_URL}
+    key: ${GEMINI_KEY}
 kafka:
   topic:
     name: activity-events
