@@ -8,7 +8,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 //will process the response coming from AI
@@ -52,11 +55,65 @@ public class ActivityAiService {
             addAnalysisSection(fullAnalysis, analysisNode, "heartRate", "Heart Rate:");
             addAnalysisSection(fullAnalysis, analysisNode, "caloriesBurned", "Calories:");
 
-            List<String> improvement = extractImprovement(analysisJson.path("improvements"));
-        } catch (Exception e) {
+            List<String> improvements = extractImprovement(analysisJson.path("improvements"));
+            List<String> suggestions = extractSuggestions(analysisJson.path("suggestions"));
+            List<String> safety = extractSafetyGuidelines(analysisJson.path("safety"));
 
+            return Recommendation.builder()
+                    .activityId(activity.getId())
+                    .userId(activity.getUserId())
+                    .type(activity.getType().toString())
+                    .recommendation(fullAnalysis.toString().trim())
+                    .improvements(improvements)
+                    .suggestions(suggestions)
+                    .safety(safety)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return createDefaultRecommendation(activity);
         }
-        return null;
+    }
+
+    private Recommendation createDefaultRecommendation(Activity activity) {
+        return Recommendation.builder()
+                .activityId(activity.getId())
+                .userId(activity.getUserId())
+                .type(activity.getType().toString())
+                .recommendation("Unable to generate detailed analysis")
+                .improvements(Collections.singletonList("Continue with your current routine"))
+                .suggestions(Collections.singletonList("Consider consulting a fitness consultant"))
+                .safety(Arrays.asList(
+                        "Always warm up before exercise",
+                        "Stay hydrated",
+                        "Listen to your body"
+                ))
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    private List<String> extractSafetyGuidelines(JsonNode safetyNode) {
+        List<String> safety = new ArrayList<>();
+        if(safetyNode.isArray()) {
+            safetyNode.forEach(item -> safety.add(item.asText()));
+        }
+        return safety.isEmpty() ?
+                Collections.singletonList("Follow general saftey guidelines") :
+                safety;
+    }
+
+    private List<String> extractSuggestions(JsonNode suggestionsNode) {
+        List<String> suggestions = new ArrayList<>();
+        if(suggestionsNode.isArray()) {
+            suggestionsNode.forEach(suggestion -> {
+                String workout = suggestion.path("workout").asText();
+                String description = suggestion.path("description").asText();
+                suggestions.add(String.format("%s: %s", workout, description));
+            });
+        }
+        return suggestions.isEmpty() ?
+                Collections.singletonList("No specific suggestions provided") :
+                suggestions;
     }
 
     private List<String> extractImprovement(JsonNode improvementsNode) {
@@ -66,9 +123,12 @@ public class ActivityAiService {
                 String area = improvemnt.path("area").asText();
                 String recommendation = improvemnt.path("recommendation").asText();
                 String detail = improvemnt.path("recommendation").asText();
-                improvemnts.add(String.format("%s: %s", area));
+                improvemnts.add(String.format("%s: %s", area, detail));
             });
         }
+        return improvemnts.isEmpty() ?
+                Collections.singletonList("No specific improvements provided") :
+                improvemnts;
     }
 
     //"overall": "This was good" -->AI model response
