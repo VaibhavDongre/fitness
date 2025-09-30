@@ -20,7 +20,7 @@ public class ActivityService {
 
     private final KafkaTemplate<String, Activity> kafkaTemplate; //key value pair
 
-    @Value("${kafka.topic.name}") //declared in yml
+    @Value("${kafka.topic.name:activity-events}") //declared in yml
     private String topicName;
 
     //trackActivity will directly save activity to database
